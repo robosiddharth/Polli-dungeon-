@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<!--
+🎮 AI Dungeon Master - Epic RPG Adventure
+Powered by Pollinations AI (gen.pollinations.ai)
+
+FEATURES:
+✅ OAuth Authorization Flow - Redirect to enter.pollinations.ai/authorize
+✅ Manual API Key Entry - For users with existing keys (pk_ or sk_)
+✅ Free Tier Support - Works without authentication (rate limited)
+✅ Dynamic Storytelling - AI-powered narrative generation
+✅ RPG Mechanics - Health, gold, levels, and turn-based gameplay
+✅ Real-time Status - Shows auth status and connection health
+
+AUTHENTICATION METHODS:
+1. OAuth (Recommended): Click "Authorize with Pollinations" → redirects to Pollinations → returns with token
+2. Manual Key: Enter API key from enter.pollinations.ai in the input field
+3. Free Tier: No key needed, just start playing (slower, rate limited)
+
+API ENDPOINT: https://gen.pollinations.ai/v1/chat/completions
+MODEL: gemini-fast (fast, efficient conversational AI)
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Dungeon Master - Epic RPG Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.9);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            padding: 25px;
+            text-align: center;
+            border-bottom: 3px solid #ffd700;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #bdc3c7;
+            font-size: 1.1em;
+            font-style: italic;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: rgba(44, 62, 80, 0.6);
+            border-bottom: 1px solid #555;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #95a5a6;
+            margin-bottom: 3px;
+        }
+
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .game-area {
+            height: 450px;
+            overflow-y: auto;
+            padding: 25px;
+            background: rgba(22, 33, 62, 0.8);
+            scroll-behavior: smooth;
+        }
+
+        .game-area::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .game-area::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .game-area::-webkit-scrollbar-thumb {
+            background: #ffd700;
+            border-radius: 5px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            line-height: 1.7;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dm-message {
+            background: linear-gradient(135deg, rgba(52, 73, 94, 0.8), rgba(44, 62, 80, 0.8));
+            border-left: 4px solid #ffd700;
+        }
+
+        .dm-message::before {
+            content: "🎲 Dungeon Master: ";
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .player-message {
+            background: linear-gradient(135deg, rgba(41, 128, 185, 0.6), rgba(52, 152, 219, 0.6));
+            border-left: 4px solid #3498db;
+            margin-left: 20px;
+        }
+
+        .player-message::before {
+            content: "⚔️ You: ";
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .system-message {
+            background: rgba(149, 165, 166, 0.3);
+            border-left: 4px solid #95a5a6;
+            font-style: italic;
+            text-align: center;
+            color: #bdc3c7;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: rgba(44, 62, 80, 0.9);
+            border-top: 2px solid #ffd700;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        #userInput {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            background: rgba(26, 26, 46, 0.9);
+            color: #e0e0e0;
+            font-size: 1em;
+            font-family: 'Georgia', serif;
+        }
+
+        #userInput:focus {
+            outline: none;
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Georgia', serif;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 15px;
+            color: #ffd700;
+            font-style: italic;
+        }
+
+        .loading::after {
+            content: "...";
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: "."; }
+            40% { content: ".."; }
+            60%, 100% { content: "..."; }
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action-btn {
+            padding: 8px 16px;
+            font-size: 0.9em;
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            border: 1px solid #ffd700;
+        }
+
+        .quick-action-btn:hover {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+        }
+
+        .start-screen {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .start-screen h2 {
+            color: #ffd700;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .start-screen p {
+            color: #bdc3c7;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            font-size: 1.2em;
+            padding: 18px 40px;
+        }
+
+        .start-btn:hover {
+            background: linear-gradient(135deg, #229954, #27ae60);
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .stats-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .game-area {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚔️ AI Dungeon Master ⚔️</h1>
+            <p>An Epic Fantasy Adventure Awaits</p>
+        </div>
+
+        <div class="stats-bar" id="statsBar" style="display: none;">
+            <div class="stat">
+                <div class="stat-label">Health</div>
+                <div class="stat-value" id="health">100</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Gold</div>
+                <div class="stat-value" id="gold">50</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Turn</div>
+                <div class="stat-value" id="turnCount">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">API Status</div>
+                <div class="stat-value" id="apiStatus" style="font-size: 1em;">
+                    <span id="apiStatusIcon" style="cursor: pointer;" onclick="showApiKeyInfo()" title="Click for API info">⚪</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            <div class="start-screen">
+                <h2>Welcome, Brave Adventurer!</h2>
+                <p>
+                    You stand at the threshold of an epic journey. A powerful AI Dungeon Master 
+                    awaits to guide you through treacherous dungeons, mystical forests, and ancient ruins.
+                    <br><br>
+                    Your choices will shape your destiny. Will you be a cunning rogue, a mighty warrior, 
+                    or a wise mage? The adventure begins when you're ready...
+                    <br><br>
+                    <strong>Powered by Pollinations AI (Gemini-Fast)</strong>
+                </p>
+                <div style="margin: 25px 0; padding: 20px; background: rgba(44, 62, 80, 0.5); border-radius: 10px; border: 1px solid #555;">
+                    <p style="font-size: 1.1em; color: #ffd700; font-weight: bold; margin-bottom: 15px; text-align: center;">
+                        Choose Your Path:
+                    </p>
+                    
+                    <!-- OAuth Authorization -->
+                    <div style="margin-bottom: 20px; padding: 15px; background: rgba(52, 152, 219, 0.2); border-radius: 8px; border: 1px solid #3498db;">
+                        <p style="color: #e0e0e0; margin-bottom: 10px;">
+                            <strong>🚀 Recommended: Authorize with Pollinations</strong><br>
+                            <span style="font-size: 0.9em; color: #95a5a6;">Quick login, daily free pollen, higher rate limits</span>
+                        </p>
+                        <button 
+                            onclick="authorizeWithPollinations()" 
+                            style="width: 100%; padding: 12px; background: linear-gradient(135deg, #3498db, #2980b9); border: none; border-radius: 8px; color: white; font-size: 1em; font-weight: bold; cursor: pointer; transition: all 0.3s ease;"
+                            onmouseover="this.style.background='linear-gradient(135deg, #2980b9, #3498db)'"
+                            onmouseout="this.style.background='linear-gradient(135deg, #3498db, #2980b9)'"
+                        >
+                            🔐 Authorize with Pollinations AI
+                        </button>
+                    </div>
+
+                    <!-- Manual Key Entry -->
+                    <details style="margin-bottom: 15px;">
+                        <summary style="cursor: pointer; color: #ffd700; font-weight: bold; padding: 10px; background: rgba(52, 73, 94, 0.3); border-radius: 8px;">
+                            💡 Or enter API key manually
+                        </summary>
+                        <div style="padding: 15px; margin-top: 10px;">
+                            <input 
+                                type="password" 
+                                id="apiKeyInput" 
+                                placeholder="pk_... or sk_..."
+                                style="width: 100%; padding: 12px; border: 2px solid #555; border-radius: 8px; background: rgba(26, 26, 46, 0.9); color: #e0e0e0; font-size: 1em; margin-bottom: 10px;"
+                            >
+                            <p style="font-size: 0.85em; color: #95a5a6; margin: 5px 0;">
+                                Get your API key at <a href="https://enter.pollinations.ai" target="_blank" style="color: #3498db;">enter.pollinations.ai</a>
+                            </p>
+                        </div>
+                    </details>
+
+                    <!-- Free Tier Option -->
+                    <p style="font-size: 0.9em; color: #95a5a6; text-align: center; margin: 15px 0 0 0;">
+                        <strong>Free Tier:</strong> Works without authorization (slower, rate limited)
+                    </p>
+                </div>
+                <button class="start-btn" onclick="startAdventure()">🎮 Begin Your Quest</button>
+            </div>
+        </div>
+
+        <div class="input-area" id="inputArea" style="display: none;">
+            <div class="input-container">
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    placeholder="What do you do?" 
+                    onkeypress="handleKeyPress(event)"
+                >
+                <button id="sendBtn" onclick="sendAction()">Send</button>
+            </div>
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="quickAction('Look around')">👀 Look Around</button>
+                <button class="quick-action-btn" onclick="quickAction('Check inventory')">🎒 Inventory</button>
+                <button class="quick-action-btn" onclick="quickAction('Rest')">💤 Rest</button>
+                <button class="quick-action-btn" onclick="quickAction('Search for treasure')">💎 Search</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let conversationHistory = [];
+        let gameStats = {
+            health: 100,
+            gold: 50,
+            level: 1,
+            turnCount: 0
+        };
+        let apiKey = ''; // Store API key
+
+        // Check for token in URL on page load (OAuth callback)
+        window.addEventListener('DOMContentLoaded', function() {
+            // Check HASH fragment (after #) - this is where Pollinations puts the token
+            const hash = window.location.hash.substring(1); // Remove the #
+            const hashParams = new URLSearchParams(hash);
+            
+            // Also check query parameters (after ?) as backup
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Check hash fragment first (this is what Pollinations uses)
+            const token = hashParams.get('api_key') ||
+                         hashParams.get('token') || 
+                         hashParams.get('key') || 
+                         hashParams.get('access_token') ||
+                         // Fallback to query params
+                         urlParams.get('api_key') ||
+                         urlParams.get('token') || 
+                         urlParams.get('key') || 
+                         urlParams.get('access_token');
+            
+            // Debug: Log hash and query parameters
+            console.log('Hash Parameters:', Object.fromEntries(hashParams));
+            console.log('Query Parameters:', Object.fromEntries(urlParams));
+            
+            if (token) {
+                // Store token from OAuth redirect
+                apiKey = token;
+                localStorage.setItem('pollinations_api_key', token); // Persist across sessions
+                // Clean URL (remove hash)
+                window.history.replaceState({}, document.title, window.location.pathname);
+                // Show success message
+                alert('✅ Successfully authorized with Pollinations AI!\nKey: ' + token.substring(0, 15) + '...\nLength: ' + token.length + ' chars');
+                console.log('API Key loaded from OAuth:', token.substring(0, 20) + '...');
+            } else {
+                // Try to load from localStorage
+                const savedKey = localStorage.getItem('pollinations_api_key');
+                if (savedKey) {
+                    apiKey = savedKey;
+                    console.log('Loaded API key from storage:', savedKey.substring(0, 20) + '...');
+                }
+            }
+        });
+
+        // OAuth Authorization Flow
+        function authorizeWithPollinations() {
+            // Get current page URL for redirect
+            const redirectUrl = window.location.href.split('?')[0]; // Remove any existing params
+            // Redirect to Pollinations authorization
+            window.location.href = `https://enter.pollinations.ai/authorize?redirect_url=${encodeURIComponent(redirectUrl)}`;
+        }
+
+        // Update authentication status display
+        function updateAuthStatus() {
+            const statusIcon = document.getElementById('apiStatusIcon');
+            if (apiKey) {
+                statusIcon.textContent = '🟢';
+                statusIcon.title = 'Authorized - Click for details';
+            } else {
+                statusIcon.textContent = '🟡';
+                statusIcon.title = 'Free Tier - Click for details';
+            }
+        }
+
+        // Show API key info and management
+        function showApiKeyInfo() {
+            if (apiKey) {
+                const action = confirm(
+                    `API Key Status: ACTIVE\n` +
+                    `Key: ${apiKey.substring(0, 20)}...\n` +
+                    `Length: ${apiKey.length} chars\n\n` +
+                    `Click OK to clear key, Cancel to keep it.`
+                );
+                if (action) {
+                    apiKey = '';
+                    localStorage.removeItem('pollinations_api_key');
+                    updateAuthStatus();
+                    alert('API key cleared. You are now using free tier.');
+                }
+            } else {
+                const newKey = prompt(
+                    'No API key set. Enter your Pollinations API key\n' +
+                    '(Get one at enter.pollinations.ai)\n\n' +
+                    'Or leave blank to use free tier:'
+                );
+                if (newKey && newKey.trim()) {
+                    apiKey = newKey.trim();
+                    localStorage.setItem('pollinations_api_key', apiKey);
+                    updateAuthStatus();
+                    alert('API key saved! Try your next action.');
+                }
+            }
+        }
+
+        // Initialize the game
+        async function startAdventure() {
+            // Get API key from input if not already set from OAuth
+            if (!apiKey) {
+                apiKey = document.getElementById('apiKeyInput').value.trim();
+            }
+            
+            document.querySelector('.start-screen').remove();
+            document.getElementById('statsBar').style.display = 'flex';
+            document.getElementById('inputArea').style.display = 'block';
+
+            // Update auth status
+            updateAuthStatus();
+
+            // Initial DM message
+            const initialPrompt = `You are an expert Dungeon Master for a fantasy RPG. Create an engaging opening scene for a new adventure. Set the scene dramatically, introduce the player's character, and present them with an initial choice or challenge. Keep it around 100 words. Make it exciting and immersive!`;
+
+            addSystemMessage('The Dungeon Master prepares your adventure...');
+            
+            const response = await callAI(initialPrompt, true);
+            addDMMessage(response);
+        }
+
+        // Call Pollinations AI
+        async function callAI(userMessage, isSystemPrompt = false) {
+            try {
+                const messages = [...conversationHistory];
+                
+                if (isSystemPrompt) {
+                    messages.push({
+                        role: "user",
+                        content: userMessage
+                    });
+                } else {
+                    // Add context about game state
+                    const contextMessage = `[Current Stats: Health=${gameStats.health}, Gold=${gameStats.gold}, Level=${gameStats.level}]\n\nPlayer action: ${userMessage}\n\nAs the Dungeon Master, respond to the player's action. Describe what happens, update the story, and present new choices. Keep responses around 80-120 words. Be creative and engaging!`;
+                    
+                    messages.push({
+                        role: "user",
+                        content: contextMessage
+                    });
+                }
+
+                // Prepare headers
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+
+                // Prepare URL with optional key parameter
+                let apiUrl = 'https://gen.pollinations.ai/v1/chat/completions';
+
+                // Add API key - try both methods
+                if (apiKey) {
+                    // Method 1: Authorization header
+                    headers['Authorization'] = `Bearer ${apiKey}`;
+                    // Method 2: Query parameter (as fallback/additional)
+                    apiUrl += `?key=${encodeURIComponent(apiKey)}`;
+                    
+                    console.log('Using API key:', apiKey.substring(0, 10) + '...');
+                }
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        model: 'gemini-fast',
+                        messages: messages,
+                        temperature: 0.8,
+                        max_tokens: 300
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('API Error Response:', errorData);
+                    console.error('Status:', response.status);
+                    console.error('Using key:', apiKey ? apiKey.substring(0, 15) + '...' : 'NO KEY');
+                    
+                    if (response.status === 401) {
+                        addSystemMessage('⚠️ Authentication failed. The API key may be invalid or expired.');
+                        // Clear invalid key
+                        localStorage.removeItem('pollinations_api_key');
+                        apiKey = '';
+                        updateAuthStatus();
+                        throw new Error(`Invalid or expired API key. Error: ${errorData.error?.message || 'Unauthorized'}`);
+                    } else if (response.status === 402) {
+                        addSystemMessage('⚠️ Insufficient pollen balance. Visit enter.pollinations.ai to add credits.');
+                        throw new Error('Insufficient pollen balance. Please add credits at enter.pollinations.ai');
+                    } else if (response.status === 429) {
+                        addSystemMessage('⚠️ Rate limit exceeded. Please wait or authorize for higher limits.');
+                        throw new Error('Rate limit exceeded. Please wait a moment or authorize for higher limits.');
+                    }
+                    throw new Error(`API error ${response.status}: ${errorData.error?.message || JSON.stringify(errorData)}`);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.choices[0].message.content;
+
+                // Update conversation history
+                if (!isSystemPrompt) {
+                    conversationHistory.push({
+                        role: "user",
+                        content: userMessage
+                    });
+                }
+                
+                conversationHistory.push({
+                    role: "assistant",
+                    content: aiResponse
+                });
+
+                // Keep conversation history manageable (last 10 exchanges)
+                if (conversationHistory.length > 20) {
+                    conversationHistory = conversationHistory.slice(-20);
+                }
+
+                return aiResponse;
+
+            } catch (error) {
+                console.error('AI Error:', error);
+                return `The mystical forces are disrupted... (${error.message})`;
+            }
+        }
+
+        // Send player action
+        async function sendAction() {
+            const input = document.getElementById('userInput');
+            const action = input.value.trim();
+
+            if (!action) return;
+
+            // Disable input while processing
+            input.disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            // Display player message
+            addPlayerMessage(action);
+            input.value = '';
+
+            // Update turn count
+            gameStats.turnCount++;
+            updateStats();
+
+            // Show loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = 'The Dungeon Master contemplates';
+            document.getElementById('gameArea').appendChild(loadingDiv);
+            scrollToBottom();
+
+            // Get AI response
+            const response = await callAI(action);
+
+            // Remove loading
+            loadingDiv.remove();
+
+            // Display DM response
+            addDMMessage(response);
+
+            // Simulate random events
+            simulateGameEvents(action, response);
+
+            // Re-enable input
+            input.disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            input.focus();
+        }
+
+        // Quick action buttons
+        function quickAction(action) {
+            document.getElementById('userInput').value = action;
+            sendAction();
+        }
+
+        // Handle Enter key
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendAction();
+            }
+        }
+
+        // Add messages to game area
+        function addDMMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message dm-message';
+            div.textContent = text;
+            document.getElementById('gameArea').appendChild(div);
+            scrollToBottom();
+        }
+
+        function addPlayerMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message player-message';
+            div.textContent = text;
+            document.getElementById('gameArea').appendChild(div);
+            scrollToBottom();
+        }
+
+        function addSystemMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message system-message';
+            div.textContent = text;
+            document.getElementById('gameArea').appendChild(div);
+            scrollToBottom();
+        }
+
+        // Simulate game events (basic RPG mechanics)
+        function simulateGameEvents(action, response) {
+            const lowerAction = action.toLowerCase();
+            const lowerResponse = response.toLowerCase();
+
+            // Combat detection
+            if (lowerAction.includes('attack') || lowerAction.includes('fight') || 
+                lowerResponse.includes('damage') || lowerResponse.includes('hit')) {
+                const damage = Math.floor(Math.random() * 20) + 5;
+                gameStats.health = Math.max(0, gameStats.health - damage);
+                addSystemMessage(`⚔️ You take ${damage} damage!`);
+            }
+
+            // Healing detection
+            if (lowerAction.includes('rest') || lowerAction.includes('heal') || lowerAction.includes('potion')) {
+                const healing = Math.floor(Math.random() * 30) + 10;
+                gameStats.health = Math.min(100, gameStats.health + healing);
+                addSystemMessage(`💚 You restore ${healing} health!`);
+            }
+
+            // Treasure detection
+            if (lowerAction.includes('search') || lowerAction.includes('loot') || 
+                lowerResponse.includes('gold') || lowerResponse.includes('treasure')) {
+                const goldFound = Math.floor(Math.random() * 50) + 10;
+                gameStats.gold += goldFound;
+                addSystemMessage(`💰 You found ${goldFound} gold!`);
+            }
+
+            // Level up
+            if (gameStats.turnCount % 10 === 0 && gameStats.turnCount > 0) {
+                gameStats.level++;
+                gameStats.health = 100;
+                addSystemMessage(`⭐ LEVEL UP! You are now level ${gameStats.level}!`);
+            }
+
+            updateStats();
+        }
+
+        // Update stats display
+        function updateStats() {
+            document.getElementById('health').textContent = gameStats.health;
+            document.getElementById('gold').textContent = gameStats.gold;
+            document.getElementById('level').textContent = gameStats.level;
+            document.getElementById('turnCount').textContent = gameStats.turnCount;
+
+            // Health color coding
+            const healthEl = document.getElementById('health');
+            if (gameStats.health < 30) {
+                healthEl.style.color = '#e74c3c';
+            } else if (gameStats.health < 60) {
+                healthEl.style.color = '#f39c12';
+            } else {
+                healthEl.style.color = '#27ae60';
+            }
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            const gameArea = document.getElementById('gameArea');
+            gameArea.scrollTop = gameArea.scrollHeight;
+        }
+    </script>
+</body>
+</html>
